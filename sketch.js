@@ -3,14 +3,15 @@ var CANVA_HEIGHT = 800;
 var CANVA_WIDTH = 800;
 
 class LSystem {
-  constructor(axiom = "F", p = "FF+[+F-F-F]-[-F+F+F]", angle = PI / 6, len = CANVA_HEIGHT / 4, originX = CANVA_WIDTH / 2, originY = CANVA_HEIGHT) {
+  constructor(axiom = "F", rules = {"F": "FF+[+F-F-F]-[-F+F+F]"} , angle = PI / 6, len = CANVA_HEIGHT / 4, originX = CANVA_WIDTH / 2, originY = CANVA_HEIGHT) {
     this.axiom = axiom;
     this.sentences = [axiom];
-    this.p = p;
     this.angle = angle;
+    this.rules = rules;
     this.len = len;
     this.originX = originX;
     this.originY = originY;
+    this.isDragon = false;
   }
 
   generateSentence(iteration = 0) {
@@ -19,11 +20,18 @@ class LSystem {
     }
     if (iteration == this.sentences.length) {
       this.sentences.push("");
+      let flag = false;
       for (let i = 0; i < this.sentences[iteration - 1].length; i++) {
+        flag = false;
         let cur = this.sentences[iteration - 1].charAt(i);
-        if (cur == "F") {
-          this.sentences[iteration] += this.p;
-        } else {
+        for (let j in this.rules){
+          if (cur == j) {
+            this.sentences[iteration] += this.rules[j];
+            flag = true;
+            break;
+          }
+        }
+        if (!flag) {
           this.sentences[iteration] += cur;
         }
       }
@@ -33,14 +41,21 @@ class LSystem {
   draw(iteration = 0) {
     this.generateSentence(iteration);
     // console.log(this.sentences[iteration]);
-    let len = this.len >> iteration;
+    let len = this.len;
+    if(this.isDragon) {
+      for (let i=0;i<iteration;i++){
+        len /= sqrt(2);
+      }
+    }else{
+      len >>= iteration;
+    }
     resetMatrix();
     background(50);
     translate(this.originX, this.originY);
     stroke(255, 100);
     for (let i = 0; i < this.sentences[iteration].length; i++) {
       let cur = this.sentences[iteration].charAt(i);
-      if (cur == "F") {
+      if (cur == "F" || cur == "G" ) {
         line(0, 0, 0, -len);
         translate(0, -len);
       }
@@ -59,12 +74,12 @@ class LSystem {
     }
   }
 
-  reset({ axiom, p, angle }) {
+  reset({ axiom, rules, angle, name }) {
     this.axiom = axiom;
     this.sentences = [axiom];
-    this.p = p;
+    this.rules = rules;
     this.angle = angle;
-    this.draw();
+    this.isDragon = (name == "Dragon curve");
   }
 }
 
@@ -74,19 +89,23 @@ function setup() {
   let ls = new LSystem();
 
   let rules = [
-    { name: "Tree1", axiom: "F", p: "FF+[+F-F-F]-[-F+F+F]", angle: PI / 6 },
-    { name: "Tree2", axiom: "F", p: "F[+F]F[-F]F", angle: PI / 7 },
-    { name: "Tree3", axiom: "F+F+F+F", p: "F+F-F-FF+F+F-F", angle: PI / 2 },
-    { name: "Triangle", axiom: "F+F+F", p: "F[+F+F+F]F", angle: 2 * PI / 3 },
-    { name: "Hexagon", axiom: "F+F+F+F+F+F", p: "F+F--F+F", angle: PI / 3 },
+    { name: "Tree1", axiom: "F", rules: {"F": "FF+[+F-F-F]-[-F+F+F]"}, angle: PI / 6 },
+    { name: "Tree2", axiom: "F", rules : {"F": "F[+F]F[-F]F"}, angle: PI / 7 },
+    { name: "Tree3", axiom: "F+F+F+F", rules : {"F": "F+F-F-FF+F+F-F"}, angle: PI / 2 },
+    { name: "Hexagon", axiom: "F+F+F+F+F+F", rules : {"F": "F+F--F+F"}, angle: PI / 3 },
+    { name: "Koch curve", axiom: "F", rules : {"F": "F+F-F-F+F"}, angle: PI / 2 },
+    { name: "Sierpinski triangle", axiom: "F-G-G", rules : {"F": "F-G+F+G-F", "G": "GG"}, angle: 2 * PI / 3 },
+    { name: "Approximate Sierpinski triangle", axiom: "F", rules : {"F": "G-F-G", "G":"F+G+F"}, angle: PI / 3 },
+    { name: "Dragon curve", axiom: "F", rules : {"F": "F+G", "G": "F-G"}, angle: PI / 2 },
   ];
 
   ls.reset(rules[0]);
+  ls.draw();
 
-  let sliderI = createSlider(0, 10, 0, 1);
+  let sliderI = createSlider(0, 15, 0, 1);
   let sliderX = createSlider(0, CANVA_WIDTH, CANVA_WIDTH / 2, 1);
   let sliderY = createSlider(0, CANVA_HEIGHT, CANVA_HEIGHT / 2, 1);
-  let sliderL = createSlider(0, CANVA_HEIGHT / 2, CANVA_HEIGHT / 8, 1);
+  let sliderL = createSlider(0, CANVA_HEIGHT / 4, CANVA_HEIGHT / 8, 1);
   sliderI.input(() => { ls.draw(sliderI.value()); });
   sliderX.input(() => { ls.originX = sliderX.value(); ls.draw(sliderI.value()); });
   sliderY.input(() => { ls.originY = sliderY.value(); ls.draw(sliderI.value()); });
